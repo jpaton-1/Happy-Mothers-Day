@@ -3,336 +3,349 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mother's Day AR - Tap to Place</title>
+    <title>Mother's Day AR</title>
     
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <!-- AR.js -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <!-- Import A-Frame -->
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     
     <style>
-        .arjs-loader {
+        .ar-overlay {
             position: fixed;
-            z-index: 999;
-            overflow: show;
-            margin: auto;
             top: 0;
             left: 0;
-            bottom: 0;
-            right: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.8);
             display: flex;
             justify-content: center;
             align-items: center;
-        }
-        
-        .arjs-loader div {
-            text-align: center;
+            flex-direction: column;
             color: white;
-            max-width: 80%;
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+            text-align: center;
             padding: 20px;
         }
         
-        .tap-button {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 15;
-            background: #FF69B4;
+        .ar-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .ar-button {
+            background-color: #FF69B4;
             color: white;
             border: none;
             border-radius: 50px;
-            width: 200px;
-            height: 60px;
+            padding: 15px 30px;
             font-size: 18px;
+            margin: 10px;
+            cursor: pointer;
             font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            width: 240px;
         }
         
-        .reset-button {
+        .hearts-container {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 15;
-            background: #f44336;
-            color: white;
-            border: none;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            font-size: 24px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        
-        /* Mother's day specific styling */
-        .heart {
-            color: #ff6b6b;
-        }
-        
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            overflow: hidden;
         }
         
         .floating-heart {
-            position: fixed;
-            font-size: 24px;
-            color: #ff6b6b;
-            z-index: 5;
-            pointer-events: none;
+            position: absolute;
+            font-size: 30px;
+            animation: float 4s ease-in-out infinite, drift 20s linear infinite;
             opacity: 0.8;
-            animation: float 3s ease-in-out infinite;
         }
         
-        .debug-info {
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes drift {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(20px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .debug-panel {
             position: fixed;
             top: 10px;
             left: 10px;
-            background: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 10px;
+            border-radius: 5px;
             font-family: monospace;
             font-size: 12px;
-            z-index: 100;
+            z-index: 1000;
             display: none;
+        }
+        
+        .heart {
+            color: #ff6b6b;
         }
     </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
-    <div class="arjs-loader">
-        <div>
-            <h1>Happy Mother's Day! <span class="heart">❤️</span></h1>
-            <p>Loading AR experience... Please allow camera access when prompted.</p>
-            <p>You'll be able to place flowers in your space!</p>
+<body>
+    <!-- Start screen overlay -->
+    <div id="start-screen" class="ar-overlay">
+        <h1>Happy Mother's Day! <span class="heart">❤️</span></h1>
+        <p>This AR experience lets you place a beautiful flower bouquet in your space.</p>
+        <p>Your phone will need to access the camera and motion sensors.</p>
+        
+        <div class="ar-buttons">
+            <button id="start-basic" class="ar-button">Start Experience ❤️</button>
         </div>
     </div>
     
-    <!-- Simpler tap UI -->
-    <button id="tap-button" class="tap-button">Tap to Place Flowers ❤️</button>
-    <button id="reset-button" class="reset-button">↺</button>
+    <!-- Hearts container -->
+    <div id="hearts-container" class="hearts-container"></div>
     
-    <!-- Debug info -->
-    <div id="debug-info" class="debug-info"></div>
+    <!-- Debug panel -->
+    <div id="debug-panel" class="debug-panel">Status: Initializing</div>
     
-    <!-- A-Frame scene -->
-    <a-scene 
-        embedded
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; precision: medium;"
-        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
+    <!-- A-Frame Scene -->
+    <a-scene embedded loading-screen="enabled: false" vr-mode-ui="enabled: false">
+        <!-- Assets -->
+        <a-assets>
+            <img id="sky" src="https://cdn.glitch.global/605e2a51-d45f-4d87-a285-9410ad350515/color-grid.png?v=1618510917674" crossorigin="anonymous">
+        </a-assets>
         
-        <!-- Bouquet container (hidden until placed) -->
-        <a-entity id="bouquet-container" visible="false" position="0 0 -2">
-            <!-- Base - Flower pot -->
-            <a-cylinder 
-                position="0 -0.15 0" 
-                radius="0.15" 
-                height="0.3" 
-                color="#FF69B4"
-                segments-radial="12">
-            </a-cylinder>
+        <!-- Environment -->
+        <a-sky color="#ECECEC" opacity="0.1"></a-sky>
+        
+        <!-- Flower Bouquet -->
+        <a-entity id="flowers-container" position="0 0 -1.5" rotation="0 0 0" visible="false">
+            <!-- Pot -->
+            <a-cylinder position="0 -0.2 0" radius="0.2" height="0.3" color="#E75480" segments-radial="16"></a-cylinder>
             
-            <!-- Main flower bouquet -->
-            <a-entity position="0 0 0">
-                <!-- Base stem -->
-                <a-cylinder 
-                    position="0 0.2 0" 
-                    radius="0.05" 
-                    height="0.5" 
-                    color="#228B22">
-                </a-cylinder>
+            <!-- Flowers Group -->
+            <a-entity id="flowers-group" position="0 0 0">
+                <!-- Stem -->
+                <a-cylinder position="0 0.3 0" radius="0.03" height="0.8" color="#228B22"></a-cylinder>
                 
-                <!-- Flower 1 - Pink -->
-                <a-entity position="0.15 0.4 0.15">
+                <!-- Flower 1: Pink Rose -->
+                <a-entity position="0 0.65 0">
                     <a-sphere color="#FF69B4" radius="0.15"></a-sphere>
-                    <a-torus-knot position="0 0 0" radius="0.12" radius-tubular="0.015" segments-tubular="32" color="#FFB6C1"></a-torus-knot>
+                    <a-sphere position="0 0.05 0" color="#FF1493" radius="0.12"></a-sphere>
                 </a-entity>
                 
-                <!-- Flower 2 - Red -->
-                <a-entity position="-0.15 0.45 -0.15">
-                    <a-sphere color="#FF0000" radius="0.15"></a-sphere>
-                    <a-torus-knot position="0 0 0" radius="0.12" radius-tubular="0.015" segments-tubular="32" color="#FF6347"></a-torus-knot>
+                <!-- Flower 2: Yellow Daisy -->
+                <a-entity position="0.12 0.55 0.12">
+                    <a-sphere color="#FFD700" radius="0.12"></a-sphere>
+                    <a-sphere position="0 0.03 0" color="#FF8C00" radius="0.05"></a-sphere>
                 </a-entity>
                 
-                <!-- Flower 3 - Yellow -->
-                <a-entity position="0 0.5 0">
-                    <a-sphere color="#FFD700" radius="0.18"></a-sphere>
-                    <a-torus-knot position="0 0 0" radius="0.15" radius-tubular="0.018" segments-tubular="32" color="#FFFF00"></a-torus-knot>
+                <!-- Flower 3: Purple Tulip -->
+                <a-entity position="-0.15 0.6 0.1">
+                    <a-sphere color="#9370DB" radius="0.13"></a-sphere>
+                    <a-sphere position="0 0.05 0" color="#8A2BE2" radius="0.08"></a-sphere>
                 </a-entity>
                 
-                <!-- Flower 4 - Blue -->
-                <a-entity position="0.2 0.35 -0.1">
-                    <a-sphere color="#1E90FF" radius="0.12"></a-sphere>
-                    <a-torus-knot position="0 0 0" radius="0.09" radius-tubular="0.015" segments-tubular="32" color="#87CEFA"></a-torus-knot>
+                <!-- Flower 4: Red Rose -->
+                <a-entity position="0.08 0.7 -0.1">
+                    <a-sphere color="#FF0000" radius="0.14"></a-sphere>
+                    <a-sphere position="0 0.05 0" color="#8B0000" radius="0.09"></a-sphere>
                 </a-entity>
                 
-                <!-- Flower 5 - Purple -->
-                <a-entity position="-0.2 0.4 0.1">
-                    <a-sphere color="#9400D3" radius="0.14"></a-sphere>
-                    <a-torus-knot position="0 0 0" radius="0.11" radius-tubular="0.015" segments-tubular="32" color="#BA55D3"></a-torus-knot>
+                <!-- Flower 5: White Lily -->
+                <a-entity position="-0.12 0.65 -0.15">
+                    <a-sphere color="#FFFFFF" radius="0.13"></a-sphere>
+                    <a-sphere position="0 0.05 0" color="#FFFF00" radius="0.06"></a-sphere>
                 </a-entity>
                 
                 <!-- Leaves -->
-                <a-entity position="0 0.2 0">
-                    <a-cone position="0.15 0 0" rotation="0 0 -45" radius-bottom="0.15" radius-top="0" height="0.3" color="#006400"></a-cone>
-                    <a-cone position="-0.15 0 0" rotation="0 0 45" radius-bottom="0.15" radius-top="0" height="0.3" color="#006400"></a-cone>
+                <a-entity position="0 0.3 0">
+                    <a-cone position="0.1 0 0.05" rotation="30 0 -60" radius-bottom="0.1" radius-top="0" height="0.25" color="#006400"></a-cone>
+                    <a-cone position="-0.1 0 -0.05" rotation="-30 0 60" radius-bottom="0.1" radius-top="0" height="0.25" color="#006400"></a-cone>
                 </a-entity>
                 
-                <!-- Mother's Day message -->
-                <a-text
-                    value="Happy Mother's Day!"
-                    color="#FF1493"
-                    align="center"
-                    width="1"
-                    position="0 -0.3 0"
-                    rotation="-90 0 0">
-                </a-text>
-                
-                <!-- I love you message -->
-                <a-text
-                    value="I love you, Mom!"
-                    color="#FF1493"
-                    align="center"
-                    width="0.8"
-                    position="0 -0.35 0"
-                    rotation="-90 0 0"
-                    scale="0.7 0.7 0.7">
-                </a-text>
+                <!-- Message Card -->
+                <a-entity position="0 -0.1 0.15" rotation="-30 0 0">
+                    <a-plane width="0.6" height="0.25" color="#FFF0F5"></a-plane>
+                    <a-text value="Happy Mother's Day!" color="#FF1493" align="center" width="0.5" position="0 0.05 0.01"></a-text>
+                    <a-text value="I love you, Mom!" color="#FF1493" align="center" width="0.5" position="0 -0.05 0.01" scale="0.8 0.8 0.8"></a-text>
+                </a-entity>
             </a-entity>
         </a-entity>
         
-        <!-- Camera -->
-        <a-entity camera position="0 1.6 0" look-controls="enabled: false"></a-entity>
+        <!-- Camera with look controls for accelerometer -->
+        <a-entity id="camera" camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true; touchEnabled: true; mouseEnabled: true"></a-entity>
     </a-scene>
     
     <script>
-        // Mobile fix - wait for scene to load
+        // Wait for the page to load
         window.addEventListener('load', function() {
             // Get references to elements
-            const scene = document.querySelector('a-scene');
-            const loader = document.querySelector('.arjs-loader');
-            const tapButton = document.getElementById('tap-button');
-            const resetButton = document.getElementById('reset-button');
-            const bouquetContainer = document.getElementById('bouquet-container');
-            const debugInfo = document.getElementById('debug-info');
+            const startScreen = document.getElementById('start-screen');
+            const startBasicButton = document.getElementById('start-basic');
+            const flowersContainer = document.getElementById('flowers-container');
+            const flowersGroup = document.getElementById('flowers-group');
+            const heartsContainer = document.getElementById('hearts-container');
+            const debugPanel = document.getElementById('debug-panel');
+            const camera = document.getElementById('camera');
             
-            // Hide loader after scene loads or timeout
-            if (scene) {
-                scene.addEventListener('loaded', function() {
-                    if (loader) {
-                        loader.style.display = 'none';
-                    }
-                });
+            // Debug Mode - check URL for debug parameter
+            const debugMode = window.location.search.includes('debug=true');
+            if (debugMode) {
+                debugPanel.style.display = 'block';
+                updateDebug('Debug mode enabled');
             }
             
-            // Fallback - hide loader after timeout
-            setTimeout(() => {
-                if (loader) loader.style.display = 'none';
-            }, 6000);
+            // Start button click handler
+            startBasicButton.addEventListener('click', function() {
+                startAR();
+            });
             
-            // Handle tap-to-place with simple button
-            tapButton.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
+            // Function to start AR experience
+            function startAR() {
+                updateDebug('Starting AR experience');
                 
-                // Show flowers with animation
-                bouquetContainer.setAttribute('visible', true);
-                bouquetContainer.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear');
+                // Hide start screen
+                startScreen.style.display = 'none';
                 
-                // Hide tap button
-                tapButton.style.display = 'none';
+                // Show flowers
+                flowersContainer.setAttribute('visible', true);
                 
-                // Show reset button
-                resetButton.style.display = 'flex';
+                // Add rotation animation to flowers
+                flowersGroup.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear');
                 
-                // Create floating hearts
+                // Generate floating hearts
                 createFloatingHearts();
                 
-                // For debugging
-                if (debugInfo) {
-                    debugInfo.textContent = "Flowers placed successfully";
-                }
+                // Setup accelerometer following
+                setupAccelerometerTracking();
                 
-                return false;
-            });
-            
-            // Handle reset button
-            resetButton.addEventListener('click', function(event) {
-                event.preventDefault();
-                event.stopPropagation();
-                
-                // Hide flowers and remove animation
-                bouquetContainer.setAttribute('visible', false);
-                bouquetContainer.removeAttribute('animation');
-                
-                // Remove floating hearts
-                document.querySelectorAll('.floating-heart').forEach(heart => {
-                    heart.parentNode.removeChild(heart);
-                });
-                
-                // Show tap button
-                tapButton.style.display = 'flex';
-                
-                // Hide reset button
-                resetButton.style.display = 'none';
-                
-                // For debugging
-                if (debugInfo) {
-                    debugInfo.textContent = "Reset completed";
-                }
-                
-                return false;
-            });
-            
-            // Debug mode - enable by adding ?debug=true to the URL
-            if (window.location.search.includes('debug=true')) {
-                debugInfo.style.display = 'block';
+                updateDebug('AR experience started');
             }
             
-            // Create floating hearts function
+            // Function to create floating hearts
             function createFloatingHearts() {
-                const heartSymbols = ['❤️', '💖', '💕', '💗', '💓'];
-                for (let i = 0; i < 8; i++) {
+                const heartEmojis = ['❤️', '💕', '💖', '💗', '💓', '💞'];
+                
+                // Clear any existing hearts
+                heartsContainer.innerHTML = '';
+                
+                // Create 12 hearts
+                for (let i = 0; i < 12; i++) {
                     const heart = document.createElement('div');
                     heart.className = 'floating-heart';
-                    heart.textContent = heartSymbols[Math.floor(Math.random() * heartSymbols.length)];
+                    heart.textContent = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
                     
                     // Random position
-                    const left = Math.random() * 80 + 10; // 10% to 90% of screen width
-                    const top = Math.random() * 80 + 10;  // 10% to 90% of screen height
-                    
-                    heart.style.left = `${left}%`;
-                    heart.style.top = `${top}%`;
+                    const x = Math.random() * 100;
+                    const y = Math.random() * 100;
+                    heart.style.left = `${x}%`;
+                    heart.style.top = `${y}%`;
                     
                     // Random animation duration
-                    heart.style.animationDuration = `${Math.random() * 2 + 2}s`;
+                    heart.style.animationDuration = `${Math.random() * 3 + 3}s, ${Math.random() * 15 + 10}s`;
                     
-                    document.body.appendChild(heart);
+                    // Random delay
+                    heart.style.animationDelay = `${Math.random() * 5}s`;
+                    
+                    heartsContainer.appendChild(heart);
+                }
+                
+                updateDebug('Created floating hearts');
+            }
+            
+            // Function to setup accelerometer tracking
+            function setupAccelerometerTracking() {
+                // Request device orientation permission
+                if (typeof DeviceOrientationEvent !== 'undefined' && 
+                    typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    
+                    DeviceOrientationEvent.requestPermission()
+                        .then(response => {
+                            if (response === 'granted') {
+                                updateDebug('Device orientation permission granted');
+                                enableLookControls();
+                            } else {
+                                updateDebug('Device orientation permission denied');
+                                // Enable backup camera controls
+                                enableBackupControls();
+                            }
+                        })
+                        .catch(error => {
+                            updateDebug('Error requesting orientation: ' + error);
+                            enableBackupControls();
+                        });
+                } else {
+                    // Non-iOS devices or older browsers
+                    updateDebug('Device does not require orientation permission');
+                    enableLookControls();
                 }
             }
             
-            // Touch events for mobile
-            if ('ontouchstart' in window) {
-                debugInfo.textContent = "Touch device detected";
+            // Enable look controls with accelerometer
+            function enableLookControls() {
+                // Make sure look controls are enabled
+                camera.setAttribute('look-controls', 'enabled', true);
                 
-                // Ensure full-page touch works
-                document.addEventListener('touchstart', function(e) {
-                    // Just capture touch events - don't do anything here
-                }, { passive: false });
+                // Make flowers follow camera's gaze
+                document.addEventListener('mousemove', updateFlowerPosition);
+                document.addEventListener('touchmove', updateFlowerPosition);
+                
+                // Also update flower position periodically based on camera rotation
+                setInterval(updateFlowerPositionFromCamera, 100);
+                
+                updateDebug('Look controls enabled');
+            }
+            
+            // Enable backup controls if accelerometer not available
+            function enableBackupControls() {
+                updateDebug('Using backup controls');
+                
+                // Position flowers in front of camera
+                flowersContainer.setAttribute('position', '0 0 -1.5');
+                
+                // Set camera controls to mouse/touch for fallback
+                camera.setAttribute('look-controls', 'mouseEnabled: true; touchEnabled: true');
+            }
+            
+            // Update flower position based on camera movement
+            function updateFlowerPosition(event) {
+                // Keep flowers in view by adjusting position
+                flowersContainer.object3D.position.set(0, 0, -1.5);
+                
+                updateDebug('Flower position updated from user input');
+            }
+            
+            // Update flower position based on camera rotation
+            function updateFlowerPositionFromCamera() {
+                // Get camera direction
+                const cameraRotation = camera.getAttribute('rotation');
+                
+                // Use camera rotation to adjust flower position slightly
+                // This creates a subtle effect of the flowers "following" your gaze
+                const offsetX = Math.sin(THREE.MathUtils.degToRad(cameraRotation.y)) * 0.5;
+                const offsetY = Math.sin(THREE.MathUtils.degToRad(-cameraRotation.x)) * 0.3;
+                
+                // Apply the offset to keep flowers in view
+                flowersContainer.object3D.position.set(offsetX, offsetY, -1.5);
+                
+                if (debugMode) {
+                    updateDebug(`Camera rot: ${cameraRotation.x.toFixed(1)}, ${cameraRotation.y.toFixed(1)} | Offset: ${offsetX.toFixed(2)}, ${offsetY.toFixed(2)}`);
+                }
+            }
+            
+            // Debug message function
+            function updateDebug(message) {
+                if (debugMode) {
+                    debugPanel.textContent = message;
+                    console.log('[Debug] ' + message);
+                }
             }
         });
     </script>
