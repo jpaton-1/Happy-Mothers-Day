@@ -3,209 +3,714 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mother's Day AR - Simple Mobile Version</title>
+    <title>Mother's Day AR Flowers</title>
     
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <!-- AR.js Core -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <!-- Include Three.js for 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
+    <!-- Include GLTFLoader for loading 3D models -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Include DeviceOrientationControls for phone motion -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.0/examples/js/controls/DeviceOrientationControls.js"></script>
     
     <style>
-        .arjs-loader {
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #loading {
             position: fixed;
-            z-index: 999;
-            overflow: show;
-            margin: auto;
             top: 0;
             left: 0;
-            bottom: 0;
-            right: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background-color: #000;
+            color: white;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-        }
-        
-        .arjs-loader div {
+            z-index: 1000;
             text-align: center;
-            color: white;
-            max-width: 80%;
-            font-family: Arial, Helvetica, sans-serif;
+            padding: 20px;
+            box-sizing: border-box;
         }
         
-        .place-button {
+        #camera-feed {
             position: fixed;
-            bottom: 30px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        #message-container {
+            position: absolute;
+            top: 20%;
             left: 50%;
             transform: translateX(-50%);
-            background: #FF69B4;
             color: white;
-            font-weight: bold;
-            padding: 15px 30px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 18px;
+            max-width: 80%;
+            animation: float 4s ease-in-out infinite;
+            z-index: 10;
+            pointer-events: none;
+            display: none;
+        }
+        
+        @keyframes float {
+            0% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+            100% { transform: translateX(-50%) translateY(0); }
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        
+        .btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #FF69B4;
+            color: white;
+            border: none;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        #reset-btn {
+            background-color: #f44336;
+            display: none;
+        }
+        
+        #instructions {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 16px;
+            z-index: 10;
+            max-width: 80%;
+        }
+        
+        #permission-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 20px;
+        }
+        
+        #permission-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #FF69B4;
+            color: white;
             border: none;
             border-radius: 30px;
             font-size: 18px;
-            z-index: 999;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
         }
         
-        .reset-button {
+        #debug-info {
             position: fixed;
-            bottom: 30px;
-            right: 20px;
-            background: #f44336;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
             color: white;
-            font-weight: bold;
-            padding: 10px;
-            border: none;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 18px;
-            z-index: 999;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-family: monospace;
+            z-index: 100;
             display: none;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
+<body>
     <!-- Loading screen -->
-    <div class="arjs-loader">
-        <div>
-            <h1>Happy Mother's Day!</h1>
-            <p>Loading AR experience...</p>
-            <p>Please allow camera access when prompted.</p>
-        </div>
+    <div id="loading">
+        <h1>Mother's Day AR Flowers</h1>
+        <p>Loading... Please allow camera access when prompted.</p>
+        <p>Tap the pink button to place flowers in your space!</p>
     </div>
     
-    <!-- Simple tap button -->
-    <button id="place-button" class="place-button">Tap to Place Flowers</button>
-    <button id="reset-button" class="reset-button">↺</button>
+    <!-- Permission overlay for iOS devices -->
+    <div id="permission-overlay">
+        <h2>Motion Sensors Required</h2>
+        <p>This AR experience needs access to your device motion sensors.</p>
+        <button id="permission-btn">Allow Motion Sensors</button>
+    </div>
     
-    <!-- A-Frame scene -->
-    <a-scene
-        embedded
-        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-        renderer="logarithmicDepthBuffer: true; precision: mediump;"
-        vr-mode-ui="enabled: false">
-        
-        <!-- Our flower models -->
-        <a-assets>
-            <a-asset-item id="flower1" src="./models/6 Orchid.glb"></a-asset-item>
-            <a-asset-item id="flower2" src="./models/7 Poppy.glb"></a-asset-item>
-            <a-asset-item id="flower3" src="./models/8 Iris.glb"></a-asset-item>
-            <a-asset-item id="flower4" src="./models/13 Marigold.glb"></a-asset-item>
-            <a-asset-item id="flower5" src="./models/16 Lavender.glb"></a-asset-item>
-        </a-assets>
-        
-        <!-- Flower container (initially hidden) -->
-        <a-entity id="flower-container" visible="false" position="0 0 -1">
-            <!-- Individual flowers will be added here by JavaScript -->
-        </a-entity>
-        
-        <!-- Camera -->
-        <a-entity camera position="0 1.6 0" look-controls="enabled: false"></a-entity>
-    </a-scene>
+    <!-- Camera feed -->
+    <video id="camera-feed" autoplay playsinline></video>
+    
+    <!-- Canvas for Three.js rendering -->
+    <div id="canvas-container"></div>
+    
+    <!-- Message display -->
+    <div id="message-container">Happy Mother's Day! ❤️</div>
+    
+    <!-- Instructions -->
+    <div id="instructions">Tap the pink button to place flowers</div>
+    
+    <!-- Controls -->
+    <div class="controls">
+        <button id="place-btn" class="btn">📍</button>
+        <button id="reset-btn" class="btn">↺</button>
+    </div>
+    
+    <!-- Debug info -->
+    <div id="debug-info"></div>
     
     <script>
         // Wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
-            // Get references to elements
-            const scene = document.querySelector('a-scene');
-            const loader = document.querySelector('.arjs-loader');
-            const placeButton = document.getElementById('place-button');
-            const resetButton = document.getElementById('reset-button');
-            const flowerContainer = document.getElementById('flower-container');
+            // Get elements
+            const loading = document.getElementById('loading');
+            const permissionOverlay = document.getElementById('permission-overlay');
+            const permissionBtn = document.getElementById('permission-btn');
+            const cameraFeed = document.getElementById('camera-feed');
+            const canvasContainer = document.getElementById('canvas-container');
+            const instructions = document.getElementById('instructions');
+            const messageContainer = document.getElementById('message-container');
+            const placeBtn = document.getElementById('place-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const debugInfo = document.getElementById('debug-info');
             
-            // Hide loader when scene loads
-            scene.addEventListener('loaded', function() {
-                loader.style.display = 'none';
-            });
+            // App state
+            let isPlaced = false;
+            let scene, camera, renderer, controls;
+            let flowerModels = [];
+            let flowers = [];
             
-            // Fallback - hide loader after timeout
-            setTimeout(() => {
-                loader.style.display = 'none';
-            }, 5000);
+            // Check for URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const debugMode = urlParams.has('debug');
             
-            // Handle tap button click
-            placeButton.addEventListener('click', function() {
-                // Hide the place button
-                placeButton.style.display = 'none';
+            // Enable debug info if in debug mode
+            if (debugMode) {
+                debugInfo.style.display = 'block';
+            }
+            
+            // Debug log function
+            function debugLog(message) {
+                if (debugMode) {
+                    console.log(message);
+                    debugInfo.textContent = message;
+                }
+            }
+            
+            // Check for iOS device
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            
+            // Initialize the AR experience
+            initAR();
+            
+            // Initialize AR experience
+            function initAR() {
+                debugLog('Initializing AR...');
                 
-                // Show the reset button
-                resetButton.style.display = 'block';
+                // Start camera
+                startCamera();
                 
-                // Show flower container
-                flowerContainer.setAttribute('visible', true);
+                // Check for device orientation permission on iOS
+                if (isIOS && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    debugLog('iOS device detected, showing permission overlay');
+                    permissionOverlay.style.display = 'flex';
+                    
+                    permissionBtn.addEventListener('click', function() {
+                        requestMotionPermission();
+                    });
+                } else {
+                    // Non-iOS devices or iOS 12 and under don't need to request permission
+                    debugLog('Non-iOS device or older iOS version');
+                    initThree();
+                }
+            }
+            
+            // Request motion sensor permission (for iOS 13+)
+            function requestMotionPermission() {
+                debugLog('Requesting motion permission...');
                 
-                // Clear any existing flowers
-                while (flowerContainer.firstChild) {
-                    flowerContainer.removeChild(flowerContainer.firstChild);
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            debugLog('Motion permission granted');
+                            permissionOverlay.style.display = 'none';
+                            initThree();
+                        } else {
+                            debugLog('Motion permission denied');
+                            alert('Motion sensor access is required for this AR experience to work properly.');
+                        }
+                    })
+                    .catch(error => {
+                        debugLog('Error requesting motion permission: ' + error);
+                        alert('Error accessing motion sensors. Please try again or use a different device.');
+                    });
+            }
+            
+            // Function to start camera
+            function startCamera() {
+                debugLog('Starting camera...');
+                
+                // Check for camera support
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Sorry, your browser does not support camera access. Please try a different browser.');
+                    loading.innerHTML = '<h1>Camera Not Supported</h1><p>Please try a different browser.</p>';
+                    return;
                 }
                 
-                // Add spinning animation to container
-                flowerContainer.setAttribute('animation', {
-                    property: 'rotation',
-                    to: '0 360 0',
-                    loop: true,
-                    dur: 15000,
-                    easing: 'linear'
+                // Get camera feed
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: window.innerWidth },
+                        height: { ideal: window.innerHeight }
+                    } 
+                })
+                .then(function(stream) {
+                    cameraFeed.srcObject = stream;
+                    
+                    // When video is ready
+                    cameraFeed.onloadedmetadata = function() {
+                        debugLog('Camera feed loaded');
+                        cameraFeed.play();
+                    };
+                })
+                .catch(function(err) {
+                    console.error('Error accessing camera:', err);
+                    debugLog('Camera error: ' + err.message);
+                    loading.innerHTML = '<h1>Camera Access Error</h1><p>Please allow camera access to use this app.</p>';
                 });
+            }
+            
+            // Initialize Three.js
+            function initThree() {
+                debugLog('Initializing Three.js...');
                 
-                // Get available flower models
-                const flowerModels = [
-                    '#flower1',
-                    '#flower2',
-                    '#flower3',
-                    '#flower4',
-                    '#flower5'
+                // Create scene
+                scene = new THREE.Scene();
+                
+                // Create camera (will be updated based on device orientation)
+                camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                camera.position.z = 0;
+                camera.position.y = 1.6; // Approximate eye height
+                
+                // Create renderer
+                renderer = new THREE.WebGLRenderer({ alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x000000, 0); // Transparent background
+                canvasContainer.appendChild(renderer.domElement);
+                
+                // Create device orientation controls
+                controls = new THREE.DeviceOrientationControls(camera);
+                
+                // Create lights
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+                
+                // Start animation loop
+                animate();
+                
+                // Preload flower models
+                preloadFlowerModels();
+                
+                // Handle window resize
+                window.addEventListener('resize', onWindowResize);
+                
+                // Hide loading screen
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 1000);
+                
+                debugLog('Three.js initialized');
+            }
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Update device orientation controls
+                if (controls) {
+                    controls.update();
+                }
+                
+                renderer.render(scene, camera);
+            }
+            
+            // Handle window resize
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            // Preload flower models
+            function preloadFlowerModels() {
+                debugLog('Preloading flower models...');
+                
+                // Add fallback flower creation
+                createFallbackFlowerModels();
+                
+                // Define flower model paths
+                const flowerPaths = [
+                    { path: './models/6 Orchid.glb', scale: 0.5 },
+                    { path: './models/7 Poppy.glb', scale: 0.5 },
+                    { path: './models/8 Iris.glb', scale: 0.5 },
+                    { path: './models/13 Marigold.glb', scale: 0.5 },
+                    { path: './models/16 Lavender.glb', scale: 0.5 }
                 ];
                 
-                // Create a bouquet of flowers
-                for (let i = 0; i < 5; i++) {
-                    // Calculate position in a circle
-                    const angle = (i / 5) * Math.PI * 2;
-                    const distance = 0.3;
-                    const x = Math.cos(angle) * distance;
-                    const z = Math.sin(angle) * distance;
+                // Try to load real models
+                const loader = new THREE.GLTFLoader();
+                let loadedCount = 0;
+                let successCount = 0;
+                
+                // Check if any models loaded
+                const checkAllLoaded = () => {
+                    loadedCount++;
+                    if (loadedCount >= flowerPaths.length) {
+                        debugLog(`Model loading complete: ${successCount}/${flowerPaths.length} models loaded`);
+                    }
+                };
+                
+                // Try to load each model
+                flowerPaths.forEach((flowerInfo, index) => {
+                    try {
+                        loader.load(
+                            flowerInfo.path,
+                            (gltf) => {
+                                // Success - add to models
+                                flowerModels.push({
+                                    model: gltf.scene,
+                                    scale: flowerInfo.scale,
+                                    type: 'gltf'
+                                });
+                                successCount++;
+                                checkAllLoaded();
+                            },
+                            (xhr) => {
+                                // Progress
+                                const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
+                                debugLog(`Loading model ${index + 1}: ${percentComplete}%`);
+                            },
+                            (error) => {
+                                // Error loading model
+                                console.warn(`Error loading model ${flowerInfo.path}:`, error);
+                                checkAllLoaded();
+                            }
+                        );
+                    } catch (e) {
+                        console.warn(`Error loading model ${flowerInfo.path}:`, e);
+                        checkAllLoaded();
+                    }
+                });
+            }
+            
+            // Create fallback flower models
+            function createFallbackFlowerModels() {
+                debugLog('Creating fallback flower models...');
+                
+                // Flower colors
+                const flowerColors = [
+                    0xFF69B4, // Pink
+                    0xFF0000, // Red
+                    0xFFD700, // Yellow
+                    0x9400D3, // Purple
+                    0x1E90FF  // Blue
+                ];
+                
+                // Create flower models
+                for (let i = 0; i < flowerColors.length; i++) {
+                    // Create flower group
+                    const flowerGroup = new THREE.Group();
                     
-                    // Create flower entity
-                    const flower = document.createElement('a-entity');
-                    flower.setAttribute('gltf-model', flowerModels[i % flowerModels.length]);
-                    flower.setAttribute('position', `${x} 0 ${z}`);
-                    flower.setAttribute('scale', '0.5 0.5 0.5');
-                    flower.setAttribute('rotation', `0 ${Math.random() * 360} 0`);
+                    // Create stem
+                    const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.4, 8);
+                    const stemMaterial = new THREE.MeshLambertMaterial({ color: 0x2ECC71 });
+                    const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                    stem.position.y = 0.2;
+                    flowerGroup.add(stem);
                     
-                    // Add to container
-                    flowerContainer.appendChild(flower);
+                    // Create flower head
+                    const flowerGeometry = new THREE.SphereGeometry(0.1, 12, 12);
+                    const flowerMaterial = new THREE.MeshLambertMaterial({ color: flowerColors[i] });
+                    const flowerHead = new THREE.Mesh(flowerGeometry, flowerMaterial);
+                    flowerHead.position.y = 0.45;
+                    flowerGroup.add(flowerHead);
+                    
+                    // Create center of flower
+                    const centerGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                    const centerMaterial = new THREE.MeshLambertMaterial({ 
+                        color: i % 2 === 0 ? 0xFFFF00 : 0xFFA500
+                    });
+                    const center = new THREE.Mesh(centerGeometry, centerMaterial);
+                    center.position.y = 0.47;
+                    flowerGroup.add(center);
+                    
+                    // Add leaf
+                    const leafGeometry = new THREE.ConeGeometry(0.05, 0.1, 8);
+                    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x2E8B57 });
+                    const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+                    leaf.rotation.z = Math.PI / 2;
+                    leaf.position.set(0.08, 0.25, 0);
+                    flowerGroup.add(leaf);
+                    
+                    // Add to flowerModels array
+                    flowerModels.push({
+                        model: flowerGroup,
+                        scale: 1,
+                        type: 'fallback'
+                    });
                 }
                 
-                // Add message
-                const message = document.createElement('a-entity');
-                message.setAttribute('text', {
-                    value: 'Happy Mother\'s Day!\nI love you, Mom!',
-                    color: '#FF1493',
-                    align: 'center',
-                    width: 2
-                });
-                message.setAttribute('position', '0 0.7 0');
-                flowerContainer.appendChild(message);
+                debugLog(`${flowerModels.length} fallback models created`);
+            }
+            
+            // Handle place button click
+            placeBtn.addEventListener('click', function() {
+                if (isPlaced) return;
+                
+                debugLog('Placing flowers...');
+                
+                // Show message
+                messageContainer.style.display = 'block';
+                
+                // Update UI
+                placeBtn.style.display = 'none';
+                resetBtn.style.display = 'block';
+                instructions.style.display = 'none';
+                
+                // Place flowers
+                placeFlowers();
+                
+                // Mark as placed
+                isPlaced = true;
             });
             
             // Handle reset button click
-            resetButton.addEventListener('click', function() {
-                // Hide flower container
-                flowerContainer.setAttribute('visible', false);
-                flowerContainer.removeAttribute('animation');
+            resetBtn.addEventListener('click', function() {
+                if (!isPlaced) return;
                 
-                // Show place button
-                placeButton.style.display = 'block';
+                debugLog('Resetting flowers...');
                 
-                // Hide reset button
-                resetButton.style.display = 'none';
+                // Hide message
+                messageContainer.style.display = 'none';
+                
+                // Update UI
+                resetBtn.style.display = 'none';
+                placeBtn.style.display = 'block';
+                instructions.style.display = 'block';
+                
+                // Remove flowers
+                removeFlowers();
+                
+                // Reset state
+                isPlaced = false;
             });
+            
+            // Place flowers
+            function placeFlowers() {
+                debugLog(`Placing flowers with ${flowerModels.length} models available`);
+                
+                // If no flower models are available, create fallbacks
+                if (flowerModels.length === 0) {
+                    debugLog('No flower models available, creating fallbacks now');
+                    createFallbackFlowerModels();
+                }
+                
+                // Create bouquet container
+                const bouquetContainer = new THREE.Group();
+                
+                // Position in front of the camera
+                // Get camera direction and position
+                const cameraDirection = new THREE.Vector3();
+                camera.getWorldDirection(cameraDirection);
+                
+                // Position the bouquet 2 meters in front of the camera
+                const distance = 2;
+                const position = new THREE.Vector3().copy(camera.position).add(
+                    cameraDirection.multiplyScalar(distance)
+                );
+                
+                // Adjust height to be slightly below eye level
+                position.y -= 0.3;
+                
+                bouquetContainer.position.copy(position);
+                
+                // Add rotation to face camera
+                bouquetContainer.lookAt(camera.position);
+                
+                // Add spin animation
+                bouquetContainer.userData.initialRotation = bouquetContainer.rotation.clone();
+                bouquetContainer.userData.spinStartTime = Date.now();
+                
+                // Place flowers in the bouquet
+                const flowerCount = Math.min(7, flowerModels.length);
+                const radius = 0.3;
+                
+                for (let i = 0; i < flowerCount; i++) {
+                    // Calculate position in a circle
+                    const angle = (i / flowerCount) * Math.PI * 2;
+                    const randomRadius = radius * (0.3 + Math.random() * 0.7);
+                    const x = Math.cos(angle) * randomRadius;
+                    const z = Math.sin(angle) * randomRadius;
+                    
+                    // Select flower model
+                    const flowerIndex = i % flowerModels.length;
+                    const flowerInfo = flowerModels[flowerIndex];
+                    
+                    // Clone the model
+                    let flowerModel;
+                    try {
+                        if (flowerInfo.type === 'gltf') {
+                            flowerModel = flowerInfo.model.clone();
+                        } else {
+                            flowerModel = flowerInfo.model.clone();
+                        }
+                    } catch (e) {
+                        console.error("Error cloning model:", e);
+                        continue;
+                    }
+                    
+                    // Set position
+                    flowerModel.position.set(x, 0, z);
+                    
+                    // Set scale
+                    const scale = (0.5 + Math.random() * 0.3) * flowerInfo.scale;
+                    flowerModel.scale.set(scale, scale, scale);
+                    
+                    // Set random rotation
+                    flowerModel.rotation.y = Math.random() * Math.PI * 2;
+                    
+                    // Add to bouquet
+                    bouquetContainer.add(flowerModel);
+                }
+                
+                // Add center flower (slightly larger)
+                if (flowerModels.length > 0) {
+                    const centerFlowerInfo = flowerModels[Math.floor(Math.random() * flowerModels.length)];
+                    let centerFlower;
+                    
+                    try {
+                        if (centerFlowerInfo.type === 'gltf') {
+                            centerFlower = centerFlowerInfo.model.clone();
+                        } else {
+                            centerFlower = centerFlowerInfo.model.clone();
+                        }
+                        
+                        centerFlower.position.set(0, 0.1, 0);
+                        
+                        const scale = 0.7 * centerFlowerInfo.scale;
+                        centerFlower.scale.set(scale, scale, scale);
+                        
+                        bouquetContainer.add(centerFlower);
+                    } catch (e) {
+                        console.error("Error adding center flower:", e);
+                    }
+                }
+                
+                // Add to scene
+                scene.add(bouquetContainer);
+                
+                // Store for animation
+                flowers.push({
+                    model: bouquetContainer,
+                    startTime: Date.now()
+                });
+                
+                // Start animation
+                animateFlowers();
+                
+                debugLog('Flowers placed successfully');
+            }
+            
+            // Animate flowers
+            function animateFlowers() {
+                if (!isPlaced || flowers.length === 0) return;
+                
+                const now = Date.now();
+                
+                // Animate each flower bouquet
+                flowers.forEach(flower => {
+                    const elapsed = (now - flower.startTime) / 1000; // Seconds
+                    
+                    // Spin the bouquet slowly
+                    flower.model.rotation.y = flower.model.userData.initialRotation.y + elapsed * 0.2;
+                    
+                    // Small bobbing motion
+                    flower.model.position.y += Math.sin(elapsed * 1.5) * 0.0005;
+                });
+                
+                // Continue animation
+                requestAnimationFrame(animateFlowers);
+            }
+            
+            // Remove all flowers
+            function removeFlowers() {
+                // Remove from scene
+                flowers.forEach(flower => {
+                    scene.remove(flower.model);
+                });
+                
+                // Clear array
+                flowers = [];
+                
+                debugLog('Flowers removed');
+            }
         });
     </script>
 </body>
