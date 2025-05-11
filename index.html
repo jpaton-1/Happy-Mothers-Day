@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mother's Day GLB Flowers AR</title>
+    <title>Mother's Day Spinning Flowers AR</title>
     
     <!-- Include Three.js for 3D rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
@@ -96,6 +96,16 @@
             z-index: 10;
             pointer-events: none;
             display: none;
+        }
+        
+        #message-text {
+            margin: 0;
+        }
+        
+        #message-heart {
+            font-size: 24px;
+            color: #FF69B4;
+            margin-top: 5px;
         }
         
         @keyframes float {
@@ -217,14 +227,17 @@
     <div id="canvas-container"></div>
     
     <!-- Message display -->
-    <div id="message-container">Happy Mother's Day! ❤️</div>
+    <div id="message-container">
+        <p id="message-text">Happy Mother's Day!</p>
+        <div id="message-heart">❤️</div>
+    </div>
     
     <!-- Instructions -->
     <div id="instructions">Tap the pink button to place flowers</div>
     
     <!-- Controls -->
     <div class="controls">
-        <button id="place-btn" class="btn">📍</button>
+        <button id="place-btn" class="btn">🌸</button>
         <button id="reset-btn" class="btn">↺</button>
     </div>
     
@@ -410,6 +423,11 @@
                 // Update device orientation controls
                 if (controls) {
                     controls.update();
+                }
+                
+                // Update flower animations if placed
+                if (isPlaced) {
+                    updateFlowerAnimations();
                 }
                 
                 renderer.render(scene, camera);
@@ -679,21 +697,26 @@
                 // Add rotation to face camera
                 bouquetContainer.lookAt(camera.position);
                 
-                // Add spin animation
+                // Store initial rotation for animation
                 bouquetContainer.userData.initialRotation = bouquetContainer.rotation.clone();
                 bouquetContainer.userData.spinStartTime = Date.now();
                 
-                // Place flowers in the bouquet
-                const flowerCount = Math.min(7, flowerModels.length);
-                const radius = 0.3;
+                // Place flowers in the bouquet with REDUCED DENSITY
+                // Using fewer flowers (5 instead of 7) and increasing the radius
+                const flowerCount = Math.min(5, flowerModels.length);
+                const radius = 0.5; // Increased from 0.3 for more spacing
                 
                 // Add used indices tracker to ensure variety
                 const usedIndices = new Set();
                 
+                // Individual flower data for animations
+                const flowerData = [];
+                
                 for (let i = 0; i < flowerCount; i++) {
-                    // Calculate position in a circle
+                    // Calculate position in a circle with MORE SPACING
                     const angle = (i / flowerCount) * Math.PI * 2;
-                    const randomRadius = radius * (0.3 + Math.random() * 0.7);
+                    // More spacing between flowers by using a larger randomness factor
+                    const randomRadius = radius * (0.5 + Math.random() * 0.5);
                     const x = Math.cos(angle) * randomRadius;
                     const z = Math.sin(angle) * randomRadius;
                     
@@ -719,24 +742,36 @@
                     try {
                         flowerModel = flowerInfo.model.clone();
                         debugLog(`Added ${flowerInfo.name} to bouquet`);
+                        
+                        // Set position
+                        flowerModel.position.set(x, 0, z);
+                        
+                        // Set scale
+                        const scale = (0.4 + Math.random() * 0.2) * flowerInfo.scale;
+                        flowerModel.scale.set(scale, scale, scale);
+                        
+                        // Set random initial rotation
+                        flowerModel.rotation.y = Math.random() * Math.PI * 2;
+                        
+                        // Add to bouquet
+                        bouquetContainer.add(flowerModel);
+                        
+                        // Store animation data for this flower
+                        flowerData.push({
+                            model: flowerModel,
+                            spinSpeed: 0.2 + Math.random() * 0.3, // Random spin speed
+                            spinDirection: Math.random() > 0.5 ? 1 : -1, // Random direction
+                            bobSpeed: 0.5 + Math.random() * 1.0, // Random bobbing speed
+                            bobAmount: 0.005 + Math.random() * 0.01, // Random bob amount
+                            initialY: flowerModel.position.y,
+                            initialRotation: flowerModel.rotation.clone()
+                        });
+                        
                     } catch (e) {
                         console.error("Error cloning model:", e);
                         debugLog(`Error adding ${flowerInfo.name}`);
                         continue;
                     }
-                    
-                    // Set position
-                    flowerModel.position.set(x, 0, z);
-                    
-                    // Set scale
-                    const scale = (0.5 + Math.random() * 0.3) * flowerInfo.scale;
-                    flowerModel.scale.set(scale, scale, scale);
-                    
-                    // Set random rotation
-                    flowerModel.rotation.y = Math.random() * Math.PI * 2;
-                    
-                    // Add to bouquet
-                    bouquetContainer.add(flowerModel);
                 }
                 
                 // Add center flower (slightly larger)
@@ -761,6 +796,18 @@
                         
                         bouquetContainer.add(centerFlower);
                         debugLog(`Added ${centerFlowerInfo.name} as center flower`);
+                        
+                        // Store animation data for center flower
+                        flowerData.push({
+                            model: centerFlower,
+                            spinSpeed: 0.15, // Slower spin for center flower
+                            spinDirection: 1,
+                            bobSpeed: 0.3,
+                            bobAmount: 0.008,
+                            initialY: centerFlower.position.y,
+                            initialRotation: centerFlower.rotation.clone()
+                        });
+                        
                     } catch (e) {
                         console.error("Error adding center flower:", e);
                         debugLog(`Error adding center flower`);
@@ -772,42 +819,43 @@
                 
                 // Store for animation
                 flowers.push({
-                    model: bouquetContainer,
+                    container: bouquetContainer,
+                    flowers: flowerData,
                     startTime: Date.now()
                 });
-                
-                // Start animation
-                animateFlowers();
                 
                 debugLog('Flowers placed successfully');
             }
             
-            // Animate flowers
-            function animateFlowers() {
-                if (!isPlaced || flowers.length === 0) return;
-                
+            // Update flower animations
+            function updateFlowerAnimations() {
                 const now = Date.now();
                 
-                // Animate each flower bouquet
-                flowers.forEach(flower => {
-                    const elapsed = (now - flower.startTime) / 1000; // Seconds
+                // Update each bouquet
+                flowers.forEach(bouquet => {
+                    const elapsed = (now - bouquet.startTime) / 1000; // Seconds
                     
-                    // Spin the bouquet slowly
-                    flower.model.rotation.y = flower.model.userData.initialRotation.y + elapsed * 0.2;
+                    // Slow rotation of the entire bouquet
+                    bouquet.container.rotation.y = bouquet.container.userData.initialRotation.y + elapsed * 0.1;
                     
-                    // Small bobbing motion
-                    flower.model.position.y += Math.sin(elapsed * 1.5) * 0.0005;
+                    // Animate individual flowers
+                    bouquet.flowers.forEach(flower => {
+                        // Spin the individual flower
+                        flower.model.rotation.y = flower.initialRotation.y + 
+                                                 elapsed * flower.spinSpeed * flower.spinDirection;
+                        
+                        // Add gentle bobbing motion
+                        flower.model.position.y = flower.initialY + 
+                                                 Math.sin(elapsed * flower.bobSpeed) * flower.bobAmount;
+                    });
                 });
-                
-                // Continue animation
-                requestAnimationFrame(animateFlowers);
             }
             
             // Remove all flowers
             function removeFlowers() {
                 // Remove from scene
-                flowers.forEach(flower => {
-                    scene.remove(flower.model);
+                flowers.forEach(bouquet => {
+                    scene.remove(bouquet.container);
                 });
                 
                 // Clear array
