@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mother's Day AR - Tap to Place Flowers</title>
+    <title>Mother's Day AR - Simple Mobile Version</title>
     
-    <!-- A-Frame and AR.js -->
+    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <!-- AR.js Core -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
     <style>
@@ -34,128 +35,40 @@
             font-family: Arial, Helvetica, sans-serif;
         }
         
-        .instructions {
+        .place-button {
             position: fixed;
-            top: 10px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.6);
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FF69B4;
             color: white;
+            font-weight: bold;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            z-index: 999;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .reset-button {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            font-weight: bold;
             padding: 10px;
-            font-family: Arial, sans-serif;
-            z-index: 10;
-            margin: 0 auto;
-            width: 90%;
-            max-width: 400px;
-            border-radius: 10px;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 18px;
+            z-index: 999;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
     </style>
-    
-    <script>
-        // Wait for the document to load
-        window.addEventListener('DOMContentLoaded', function() {
-            // Hide the loading screen once the scene is ready
-            const scene = document.querySelector('a-scene');
-            const loader = document.querySelector('.arjs-loader');
-            
-            scene.addEventListener('loaded', function() {
-                loader.style.display = 'none';
-            });
-            
-            // Create tap-to-place functionality
-            let placedFlower = null;
-            
-            // Add click listener to the scene
-            scene.addEventListener('click', function(event) {
-                // Get the cursor position
-                const cursor = document.querySelector('[cursor]');
-                if (!cursor) return;
-                
-                // Get the intersection point with the ground
-                const intersectionPoint = cursor.components.cursor.intersection.point;
-                if (!intersectionPoint) return;
-                
-                // If we already placed a flower, just update its position
-                if (placedFlower) {
-                    placedFlower.setAttribute('position', `${intersectionPoint.x} 0 ${intersectionPoint.z}`);
-                    return;
-                }
-                
-                // Create a new flower arrangement
-                placedFlower = document.createElement('a-entity');
-                placedFlower.setAttribute('id', 'flower-arrangement');
-                placedFlower.setAttribute('position', `${intersectionPoint.x} 0 ${intersectionPoint.z}`);
-                placedFlower.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear');
-                scene.appendChild(placedFlower);
-                
-                // Select random flower models
-                const flowerModels = [
-                    '6 Orchid.glb',
-                    '7 Poppy.glb',
-                    '8 Iris.glb',
-                    '13 Marigold.glb',
-                    '16 Lavender.glb',
-                    '17 Hibiscus.glb',
-                    '20 Violet.glb',
-                    '24 Cosmos.glb',
-                    '25 Snapdragon.glb',
-                    '26 Morning Glory.glb',
-                    '27 Anemone.glb',
-                    '30 Primrose.glb'
-                ];
-                
-                // Create a bouquet with 5 random flowers
-                const flowerCount = 5;
-                const radius = 0.3; // Arrangement radius
-                
-                for (let i = 0; i < flowerCount; i++) {
-                    // Calculate position in a circle
-                    const angle = (i / flowerCount) * Math.PI * 2;
-                    const x = Math.cos(angle) * (radius * 0.7 * Math.random() + 0.3 * radius);
-                    const z = Math.sin(angle) * (radius * 0.7 * Math.random() + 0.3 * radius);
-                    
-                    // Select random flower model
-                    const modelIndex = Math.floor(Math.random() * flowerModels.length);
-                    const modelUrl = `./models/${flowerModels[modelIndex]}`;
-                    
-                    // Create flower entity
-                    const flower = document.createElement('a-entity');
-                    flower.setAttribute('gltf-model', modelUrl);
-                    flower.setAttribute('position', `${x} 0 ${z}`);
-                    
-                    // Random scale
-                    const scale = 0.5 + Math.random() * 0.3;
-                    flower.setAttribute('scale', `${scale} ${scale} ${scale}`);
-                    
-                    // Random rotation
-                    flower.setAttribute('rotation', `0 ${Math.random() * 360} 0`);
-                    
-                    // Add to arrangement
-                    placedFlower.appendChild(flower);
-                }
-                
-                // Add a greeting message
-                const message = document.createElement('a-entity');
-                message.setAttribute('text', 'value: Happy Mother\'s Day!; color: #FF1493; align: center; width: 4');
-                message.setAttribute('position', '0 1.5 0');
-                message.setAttribute('rotation', '0 0 0');
-                message.setAttribute('animation', 'property: position; to: 0 1.7 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine');
-                placedFlower.appendChild(message);
-                
-                // Add second message
-                const message2 = document.createElement('a-entity');
-                message2.setAttribute('text', 'value: I love you, Mom!; color: #FF1493; align: center; width: 3');
-                message2.setAttribute('position', '0 1.2 0');
-                message2.setAttribute('rotation', '0 0 0');
-                message2.setAttribute('animation', 'property: position; to: 0 1.4 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine; delay: 1500');
-                placedFlower.appendChild(message2);
-                
-                // Update instructions
-                document.querySelector('.instructions').textContent = 'Tap again to move the flowers to a new location!';
-            });
-        });
-    </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
     <!-- Loading screen -->
@@ -167,37 +80,133 @@
         </div>
     </div>
     
-    <!-- Instructions -->
-    <div class="instructions">Tap anywhere to place flower bouquet</div>
+    <!-- Simple tap button -->
+    <button id="place-button" class="place-button">Tap to Place Flowers</button>
+    <button id="reset-button" class="reset-button">↺</button>
     
     <!-- A-Frame scene -->
     <a-scene
         embedded
-        arjs="debugUIEnabled: false; sourceType: webcam; trackingMethod: best;"
-        renderer="precision: mediump;"
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+        renderer="logarithmicDepthBuffer: true; precision: mediump;"
         vr-mode-ui="enabled: false">
         
-        <!-- Camera with cursor for tap interaction -->
-        <a-entity camera look-controls position="0 1.6 0" wasd-controls="enabled: false">
-            <a-entity 
-                cursor="fuse: false; rayOrigin: mouse;"
-                position="0 0 -1"
-                geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
-                material="color: white; shader: flat"
-                raycaster="far: 50; objects: .clickable">
-            </a-entity>
+        <!-- Our flower models -->
+        <a-assets>
+            <a-asset-item id="flower1" src="./models/6 Orchid.glb"></a-asset-item>
+            <a-asset-item id="flower2" src="./models/7 Poppy.glb"></a-asset-item>
+            <a-asset-item id="flower3" src="./models/8 Iris.glb"></a-asset-item>
+            <a-asset-item id="flower4" src="./models/13 Marigold.glb"></a-asset-item>
+            <a-asset-item id="flower5" src="./models/16 Lavender.glb"></a-asset-item>
+        </a-assets>
+        
+        <!-- Flower container (initially hidden) -->
+        <a-entity id="flower-container" visible="false" position="0 0 -1">
+            <!-- Individual flowers will be added here by JavaScript -->
         </a-entity>
         
-        <!-- Ground plane for collision detection -->
-        <a-plane 
-            class="clickable" 
-            position="0 0 0" 
-            rotation="-90 0 0" 
-            width="100" 
-            height="100" 
-            color="#222222"
-            material="opacity: 0.0; transparent: true">
-        </a-plane>
+        <!-- Camera -->
+        <a-entity camera position="0 1.6 0" look-controls="enabled: false"></a-entity>
     </a-scene>
+    
+    <script>
+        // Wait for DOM to load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get references to elements
+            const scene = document.querySelector('a-scene');
+            const loader = document.querySelector('.arjs-loader');
+            const placeButton = document.getElementById('place-button');
+            const resetButton = document.getElementById('reset-button');
+            const flowerContainer = document.getElementById('flower-container');
+            
+            // Hide loader when scene loads
+            scene.addEventListener('loaded', function() {
+                loader.style.display = 'none';
+            });
+            
+            // Fallback - hide loader after timeout
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 5000);
+            
+            // Handle tap button click
+            placeButton.addEventListener('click', function() {
+                // Hide the place button
+                placeButton.style.display = 'none';
+                
+                // Show the reset button
+                resetButton.style.display = 'block';
+                
+                // Show flower container
+                flowerContainer.setAttribute('visible', true);
+                
+                // Clear any existing flowers
+                while (flowerContainer.firstChild) {
+                    flowerContainer.removeChild(flowerContainer.firstChild);
+                }
+                
+                // Add spinning animation to container
+                flowerContainer.setAttribute('animation', {
+                    property: 'rotation',
+                    to: '0 360 0',
+                    loop: true,
+                    dur: 15000,
+                    easing: 'linear'
+                });
+                
+                // Get available flower models
+                const flowerModels = [
+                    '#flower1',
+                    '#flower2',
+                    '#flower3',
+                    '#flower4',
+                    '#flower5'
+                ];
+                
+                // Create a bouquet of flowers
+                for (let i = 0; i < 5; i++) {
+                    // Calculate position in a circle
+                    const angle = (i / 5) * Math.PI * 2;
+                    const distance = 0.3;
+                    const x = Math.cos(angle) * distance;
+                    const z = Math.sin(angle) * distance;
+                    
+                    // Create flower entity
+                    const flower = document.createElement('a-entity');
+                    flower.setAttribute('gltf-model', flowerModels[i % flowerModels.length]);
+                    flower.setAttribute('position', `${x} 0 ${z}`);
+                    flower.setAttribute('scale', '0.5 0.5 0.5');
+                    flower.setAttribute('rotation', `0 ${Math.random() * 360} 0`);
+                    
+                    // Add to container
+                    flowerContainer.appendChild(flower);
+                }
+                
+                // Add message
+                const message = document.createElement('a-entity');
+                message.setAttribute('text', {
+                    value: 'Happy Mother\'s Day!\nI love you, Mom!',
+                    color: '#FF1493',
+                    align: 'center',
+                    width: 2
+                });
+                message.setAttribute('position', '0 0.7 0');
+                flowerContainer.appendChild(message);
+            });
+            
+            // Handle reset button click
+            resetButton.addEventListener('click', function() {
+                // Hide flower container
+                flowerContainer.setAttribute('visible', false);
+                flowerContainer.removeAttribute('animation');
+                
+                // Show place button
+                placeButton.style.display = 'block';
+                
+                // Hide reset button
+                resetButton.style.display = 'none';
+            });
+        });
+    </script>
 </body>
 </html>
