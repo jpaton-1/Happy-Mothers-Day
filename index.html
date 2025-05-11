@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mother's Day AR Flowers</title>
+    <title>Mother's Day AR - Tap to Place</title>
     
-    <!-- Import A-Frame and AR.js -->
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <!-- AR.js -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
     <style>
@@ -29,165 +30,429 @@
         
         .arjs-loader div {
             text-align: center;
-            font-family: Arial, Helvetica, sans-serif;
             color: white;
             max-width: 80%;
+            font-family: Arial, Helvetica, sans-serif;
             padding: 20px;
         }
         
-        .instructions {
+        .placement-ui {
             position: fixed;
-            top: 10px;
+            top: 0;
             left: 0;
-            right: 0;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            font-family: Arial, sans-serif;
-            color: #333;
+            width: 100%;
+            height: 100%;
             z-index: 10;
-            border-radius: 5px;
-            margin: 0 auto;
-            width: 90%;
-            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* Allow clicks to pass through to AR scene */
         }
         
+        .placement-instructions {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            max-width: 80%;
+            margin-bottom: 20px;
+        }
+        
+        .placement-crosshair {
+            width: 50px;
+            height: 50px;
+            border: 2px solid white;
+            border-radius: 50%;
+            position: relative;
+            pointer-events: none;
+        }
+        
+        .placement-crosshair::before, .placement-crosshair::after {
+            content: '';
+            position: absolute;
+            background: white;
+        }
+        
+        .placement-crosshair::before {
+            width: 2px;
+            height: 20px;
+            top: 15px;
+            left: 24px;
+        }
+        
+        .placement-crosshair::after {
+            width: 20px;
+            height: 2px;
+            top: 24px;
+            left: 15px;
+        }
+        
+        /* Control buttons */
+        .ar-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .ar-button {
+            background: #FF69B4;
+            color: white;
+            border: none;
+            margin-top: 10px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .ar-button.confirm-placement {
+            display: block;
+        }
+        
+        .reset-button {
+            background: #f44336;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Mother's day specific styling */
         .heart {
             color: #ff6b6b;
         }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .floating-heart {
+            position: fixed;
+            font-size: 24px;
+            color: #ff6b6b;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0.8;
+            animation: float 3s ease-in-out infinite;
+        }
     </style>
+    
+    <script>
+        // Register custom A-Frame component for tap-to-place functionality
+        AFRAME.registerComponent('tap-to-place', {
+            init: function() {
+                this.camera = document.querySelector('a-entity[camera]');
+                this.canvasEl = document.querySelector('canvas.a-canvas');
+                this.isPlaced = false;
+                
+                // Add event listener for screen touches
+                this.canvasEl.addEventListener('click', this.onCanvasClick.bind(this));
+                
+                // Listen for the confirmation button click
+                document.querySelector('.confirm-placement').addEventListener('click', this.confirmPlacement.bind(this));
+                
+                // Listen for reset button click
+                document.querySelector('.reset-button').addEventListener('click', this.resetPlacement.bind(this));
+            },
+            
+            onCanvasClick: function(event) {
+                // Don't process if already placed or UI elements were clicked
+                if (this.isPlaced) return;
+                
+                // Create a ray from the camera position outward
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2();
+                
+                // Get canvas dimensions
+                const canvasBounds = this.canvasEl.getBoundingClientRect();
+                
+                // Calculate the normalized mouse position (-1 to 1 for both x and y)
+                mouse.x = ((event.clientX - canvasBounds.left) / canvasBounds.width) * 2 - 1;
+                mouse.y = -((event.clientY - canvasBounds.top) / canvasBounds.height) * 2 + 1;
+                
+                // Update the raycaster with the camera and mouse position
+                raycaster.setFromCamera(mouse, this.camera.object3D.children[0]);
+                
+                // Create a position approximately 2 meters in front of the camera along the ray
+                const pos = new THREE.Vector3();
+                raycaster.ray.at(2, pos);
+                
+                // Position the bouquet preview at this location
+                const preview = document.getElementById('bouquet-preview');
+                preview.object3D.position.copy(pos);
+                
+                // Make preview visible
+                preview.setAttribute('visible', true);
+                
+                // Show the confirm button
+                document.querySelector('.confirm-placement').style.display = 'flex';
+            },
+            
+            confirmPlacement: function() {
+                if (this.isPlaced) return;
+                
+                // Get the preview position
+                const preview = document.getElementById('bouquet-preview');
+                const position = preview.object3D.position;
+                
+                // Create the actual bouquet at the preview position
+                const bouquet = document.getElementById('bouquet-container');
+                bouquet.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+                bouquet.setAttribute('visible', true);
+                
+                // Hide preview and UI elements
+                preview.setAttribute('visible', false);
+                document.querySelector('.placement-ui').style.display = 'none';
+                document.querySelector('.confirm-placement').style.display = 'none';
+                
+                // Show the reset button
+                document.querySelector('.reset-button').style.display = 'flex';
+                
+                // Create decorative floating hearts
+                this.createFloatingHearts();
+                
+                // Mark as placed
+                this.isPlaced = true;
+                
+                // Start the animation
+                bouquet.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear');
+            },
+            
+            resetPlacement: function() {
+                if (!this.isPlaced) return;
+                
+                // Hide the bouquet
+                const bouquet = document.getElementById('bouquet-container');
+                bouquet.setAttribute('visible', false);
+                bouquet.removeAttribute('animation');
+                
+                // Remove any floating hearts
+                document.querySelectorAll('.floating-heart').forEach(heart => {
+                    heart.parentNode.removeChild(heart);
+                });
+                
+                // Show placement UI again
+                document.querySelector('.placement-ui').style.display = 'flex';
+                document.querySelector('.confirm-placement').style.display = 'none';
+                
+                // Hide the reset button
+                document.querySelector('.reset-button').style.display = 'none';
+                
+                // Reset flag
+                this.isPlaced = false;
+            },
+            
+            createFloatingHearts: function() {
+                // Create 8 decorative floating hearts around the screen edges
+                const heartSymbols = ['❤️', '💖', '💕', '💗', '💓'];
+                for (let i = 0; i < 8; i++) {
+                    const heart = document.createElement('div');
+                    heart.className = 'floating-heart';
+                    heart.textContent = heartSymbols[Math.floor(Math.random() * heartSymbols.length)];
+                    
+                    // Random position near edges
+                    const left = Math.random() * 80 + 10; // 10% to 90% of screen width
+                    const top = Math.random() * 80 + 10;  // 10% to 90% of screen height
+                    
+                    heart.style.left = `${left}%`;
+                    heart.style.top = `${top}%`;
+                    
+                    // Random animation duration
+                    heart.style.animationDuration = `${Math.random() * 2 + 2}s`;
+                    
+                    document.body.appendChild(heart);
+                }
+            }
+        });
+    </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-    <!-- Loading screen -->
     <div class="arjs-loader">
         <div>
             <h1>Happy Mother's Day! <span class="heart">❤️</span></h1>
-            <p>Loading your special AR flowers...</p>
-            <p>Please allow camera access when prompted.</p>
+            <p>Loading AR experience... Please allow camera access when prompted.</p>
+            <p>You'll be able to place flowers anywhere!</p>
         </div>
     </div>
     
-    <!-- Instructions -->
-    <div class="instructions">
-        Point your camera at the Hiro marker to see your Mother's Day flowers
+    <!-- Placement UI -->
+    <div class="placement-ui">
+        <div class="placement-instructions">
+            Tap on the screen to place the flowers, then confirm with the heart button
+        </div>
+        <div class="placement-crosshair"></div>
     </div>
     
-    <!-- A-Frame Scene -->
-    <a-scene
+    <!-- Control buttons -->
+    <div class="ar-controls">
+        <button class="ar-button confirm-placement" style="display: none;">❤️</button>
+        <button class="ar-button reset-button" style="display: none;">↺</button>
+    </div>
+    
+    <!-- A-Frame scene -->
+    <a-scene 
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;"
-        renderer="logarithmicDepthBuffer: true;"
-        vr-mode-ui="enabled: false">
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        renderer="logarithmicDepthBuffer: true; precision: medium;"
+        tap-to-place>
         
-        <!-- Using a built-in primitive instead of external model -->
-        <a-marker preset="hiro">
-            <!-- Use built-in models instead of the missing GLTF -->
-            <a-entity position="0 0.5 0">
+        <!-- Bouquet preview (shown before placement) -->
+        <a-entity id="bouquet-preview" visible="false">
+            <!-- Preview visualization -->
+            <a-ring
+                color="#FF69B4"
+                radius-inner="0.2"
+                radius-outer="0.3"
+                rotation="-90 0 0"
+                opacity="0.5"
+                position="0 0 0">
+            </a-ring>
+            <a-text
+                value="Flowers will appear here"
+                color="white"
+                align="center"
+                width="1"
+                position="0 0.05 0">
+            </a-text>
+        </a-entity>
+        
+        <!-- Bouquet container (hidden until placed) -->
+        <a-entity id="bouquet-container" visible="false" position="0 0 0">
+            <!-- Base - Flower pot -->
+            <a-cylinder 
+                position="0 -0.15 0" 
+                radius="0.15" 
+                height="0.3" 
+                color="#FF69B4"
+                segments-radial="12">
+            </a-cylinder>
+            
+            <!-- Main flower bouquet -->
+            <a-entity position="0 0 0">
                 <!-- Base stem -->
                 <a-cylinder 
-                    position="0 0 0" 
+                    position="0 0.2 0" 
                     radius="0.05" 
-                    height="1.5" 
-                    color="#228B22" 
-                    animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+                    height="0.5" 
+                    color="#228B22">
                 </a-cylinder>
                 
                 <!-- Flower 1 - Pink -->
-                <a-entity position="0.15 0.65 0.15">
+                <a-entity position="0.15 0.4 0.15">
                     <a-sphere color="#FF69B4" radius="0.15"></a-sphere>
                     <a-torus-knot position="0 0 0" radius="0.12" radius-tubular="0.015" segments-tubular="32" color="#FFB6C1"></a-torus-knot>
                 </a-entity>
                 
                 <!-- Flower 2 - Red -->
-                <a-entity position="-0.15 0.85 -0.15">
+                <a-entity position="-0.15 0.45 -0.15">
                     <a-sphere color="#FF0000" radius="0.15"></a-sphere>
                     <a-torus-knot position="0 0 0" radius="0.12" radius-tubular="0.015" segments-tubular="32" color="#FF6347"></a-torus-knot>
                 </a-entity>
                 
                 <!-- Flower 3 - Yellow -->
-                <a-entity position="0 1 0">
+                <a-entity position="0 0.5 0">
                     <a-sphere color="#FFD700" radius="0.18"></a-sphere>
                     <a-torus-knot position="0 0 0" radius="0.15" radius-tubular="0.018" segments-tubular="32" color="#FFFF00"></a-torus-knot>
                 </a-entity>
                 
                 <!-- Flower 4 - Blue -->
-                <a-entity position="0.2 0.8 -0.1">
+                <a-entity position="0.2 0.35 -0.1">
                     <a-sphere color="#1E90FF" radius="0.12"></a-sphere>
                     <a-torus-knot position="0 0 0" radius="0.09" radius-tubular="0.015" segments-tubular="32" color="#87CEFA"></a-torus-knot>
                 </a-entity>
                 
                 <!-- Flower 5 - Purple -->
-                <a-entity position="-0.2 0.7 0.1">
+                <a-entity position="-0.2 0.4 0.1">
                     <a-sphere color="#9400D3" radius="0.14"></a-sphere>
                     <a-torus-knot position="0 0 0" radius="0.11" radius-tubular="0.015" segments-tubular="32" color="#BA55D3"></a-torus-knot>
                 </a-entity>
                 
                 <!-- Leaves -->
-                <a-entity position="0 0.3 0">
+                <a-entity position="0 0.2 0">
                     <a-cone position="0.15 0 0" rotation="0 0 -45" radius-bottom="0.15" radius-top="0" height="0.4" color="#006400"></a-cone>
                     <a-cone position="-0.15 0 0" rotation="0 0 45" radius-bottom="0.15" radius-top="0" height="0.4" color="#006400"></a-cone>
                 </a-entity>
-            </a-entity>
-            
-            <!-- Happy Mother's Day Message -->
-            <a-text
-                value="Happy Mother's Day!"
-                position="0 -0.25 0"
-                rotation="-90 0 0" 
-                align="center"
-                color="#FF69B4"
-                width="2"
-                font="kelsonsans">
-            </a-text>
-            
-            <!-- Add some floating hearts around the bouquet -->
-            <a-entity position="0 0.5 0">
-                <!-- Heart 1 -->
+                
+                <!-- Mother's Day message -->
                 <a-text
-                    value="❤️"
-                    position="0.3 0.4 0.3"
-                    scale="0.5 0.5 0.5"
-                    animation="property: position; to: 0.3 0.6 0.3; loop: true; dir: alternate; dur: 2000; easing: easeInOutSine;">
+                    value="Happy Mother's Day!"
+                    color="#FF1493"
+                    align="center"
+                    width="1"
+                    position="0 -0.3 0"
+                    rotation="-90 0 0">
                 </a-text>
                 
-                <!-- Heart 2 -->
+                <!-- I love you message -->
                 <a-text
-                    value="❤️"
-                    position="-0.3 0.3 -0.2"
-                    scale="0.5 0.5 0.5"
-                    animation="property: position; to: -0.3 0.5 -0.2; loop: true; dir: alternate; dur: 1800; easing: easeInOutSine;">
-                </a-text>
-                
-                <!-- Heart 3 -->
-                <a-text
-                    value="❤️"
-                    position="0.2 0.2 -0.3"
-                    scale="0.5 0.5 0.5"
-                    animation="property: position; to: 0.2 0.4 -0.3; loop: true; dir: alternate; dur: 2200; easing: easeInOutSine;">
+                    value="I love you, Mom!"
+                    color="#FF1493"
+                    align="center"
+                    width="0.8"
+                    position="0 -0.35 0"
+                    rotation="-90 0 0"
+                    scale="0.7 0.7 0.7">
                 </a-text>
             </a-entity>
-        </a-marker>
+        </a-entity>
         
-        <!-- Camera -->
-        <a-entity camera></a-entity>
+        <!-- Camera & cursor -->
+        <a-entity camera position="0 1.6 0" look-controls>
+            <a-entity cursor="fuse: false"
+                      position="0 0 -1"
+                      geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                      material="color: white; shader: flat"
+                      visible="false">
+            </a-entity>
+        </a-entity>
+        
+        <!-- Ambient light -->
+        <a-light type="ambient" color="#BBB" intensity="0.6"></a-light>
+        
+        <!-- Directional light casting shadows -->
+        <a-light type="directional" 
+                 color="#FFF" 
+                 intensity="0.8" 
+                 position="-1 1 1">
+        </a-light>
     </a-scene>
     
     <script>
-        // Hide the loader when scene is loaded
+        // Wait for DOM to load
         document.addEventListener('DOMContentLoaded', function() {
-            const scene = document.querySelector('a-scene');
-            const loader = document.querySelector('.arjs-loader');
+            // Loader handling
+            const arjsLoader = document.querySelector('.arjs-loader');
             
+            // Hide loader after scene loads or after timeout
+            const scene = document.querySelector('a-scene');
             if (scene) {
                 scene.addEventListener('loaded', function() {
-                    loader.style.display = 'none';
+                    if (arjsLoader) {
+                        arjsLoader.style.display = 'none';
+                    }
                 });
-                
-                // Fallback - hide loader after 5 seconds if scene load event doesn't trigger
-                setTimeout(function() {
-                    loader.style.display = 'none';
-                }, 5000);
             }
+            
+            // Fallback - hide loader after 6 seconds
+            setTimeout(() => {
+                if (arjsLoader) {
+                    arjsLoader.style.display = 'none';
+                }
+            }, 6000);
         });
     </script>
 </body>
