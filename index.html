@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mother's Day AR Flowers</title>
+    
+    <!-- Import A-Frame and AR.js -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        .arjs-loader {
+            position: fixed;
+            z-index: 999;
+            overflow: show;
+            margin: auto;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .arjs-loader div {
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+            color: white;
+            max-width: 80%;
+            padding: 20px;
+        }
+        
+        .instructions {
+            position: fixed;
+            top: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            font-family: Arial, sans-serif;
+            color: #333;
+            z-index: 10;
+            border-radius: 5px;
+            margin: 0 auto;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        .heart {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body style="margin: 0; overflow: hidden;">
+    <!-- Loading screen -->
+    <div class="arjs-loader">
+        <div>
+            <h1>Happy Mother's Day! <span class="heart">❤️</span></h1>
+            <p>Loading your special AR flowers...</p>
+            <p>Please allow camera access when prompted.</p>
+        </div>
+    </div>
+    
+    <!-- Instructions -->
+    <div class="instructions">
+        Point your camera at the Hiro marker to see your Mother's Day flowers
+    </div>
+    
+    <!-- A-Frame Scene -->
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;"
+        renderer="logarithmicDepthBuffer: true;"
+        vr-mode-ui="enabled: false">
+        
+        <!-- Define assets -->
+        <a-assets>
+            <!-- You'll need to replace this with the path to your GLTF model -->
+            <a-asset-item id="flower-model" src="./prop_wild_flower_bouquet_pose_01_stemcell/prop_wild_flower_bouquet_pose_01_stemcell.gltf"></a-asset-item>
+        </a-assets>
+        
+        <!-- AR marker -->
+        <a-marker preset="hiro">
+            <!-- Flower bouquet with spinning animation -->
+            <a-entity
+                position="0 0.5 0"
+                scale="0.5 0.5 0.5"
+                gltf-model="#flower-model"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+            </a-entity>
+            
+            <!-- Happy Mother's Day Message -->
+            <a-text
+                value="Happy Mother's Day!"
+                position="0 -0.25 0"
+                rotation="-90 0 0" 
+                align="center"
+                color="#FF69B4"
+                width="2"
+                font="kelsonsans">
+            </a-text>
+            
+            <!-- Add some floating hearts around the bouquet -->
+            <a-entity position="0 0.5 0">
+                <!-- Heart 1 -->
+                <a-text
+                    value="❤️"
+                    position="0.3 0.4 0.3"
+                    scale="0.5 0.5 0.5"
+                    rotation="0 0 0"
+                    animation="property: position; to: 0.3 0.6 0.3; loop: true; dir: alternate; dur: 2000; easing: easeInOutSine;">
+                </a-text>
+                
+                <!-- Heart 2 -->
+                <a-text
+                    value="❤️"
+                    position="-0.3 0.3 -0.2"
+                    scale="0.5 0.5 0.5"
+                    rotation="0 0 0"
+                    animation="property: position; to: -0.3 0.5 -0.2; loop: true; dir: alternate; dur: 1800; easing: easeInOutSine;">
+                </a-text>
+                
+                <!-- Heart 3 -->
+                <a-text
+                    value="❤️"
+                    position="0.2 0.2 -0.3"
+                    scale="0.5 0.5 0.5"
+                    rotation="0 0 0"
+                    animation="property: position; to: 0.2 0.4 -0.3; loop: true; dir: alternate; dur: 2200; easing: easeInOutSine;">
+                </a-text>
+            </a-entity>
+        </a-marker>
+        
+        <!-- Camera -->
+        <a-entity camera></a-entity>
+    </a-scene>
+    
+    <script>
+        // Hide the loader when scene is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const scene = document.querySelector('a-scene');
+            const loader = document.querySelector('.arjs-loader');
+            
+            if (scene) {
+                scene.addEventListener('loaded', function() {
+                    loader.style.display = 'none';
+                });
+                
+                // Fallback - hide loader after 5 seconds if scene load event doesn't trigger
+                setTimeout(function() {
+                    loader.style.display = 'none';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>
