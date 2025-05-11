@@ -79,20 +79,54 @@
         renderer="logarithmicDepthBuffer: true;"
         vr-mode-ui="enabled: false">
         
-        <!-- Define assets -->
-        <a-assets>
-            <!-- You'll need to replace this with the path to your GLTF model -->
-            <a-asset-item id="flower-model" src="./prop_wild_flower_bouquet_pose_01_stemcell/prop_wild_flower_bouquet_pose_01_stemcell.gltf"></a-asset-item>
-        </a-assets>
-        
-        <!-- AR marker -->
+        <!-- Using a built-in primitive instead of external model -->
         <a-marker preset="hiro">
-            <!-- Flower bouquet with spinning animation -->
-            <a-entity
-                position="0 0.5 0"
-                scale="0.5 0.5 0.5"
-                gltf-model="#flower-model"
-                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+            <!-- Use built-in models instead of the missing GLTF -->
+            <a-entity position="0 0.5 0">
+                <!-- Base stem -->
+                <a-cylinder 
+                    position="0 0 0" 
+                    radius="0.05" 
+                    height="1.5" 
+                    color="#228B22" 
+                    animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+                </a-cylinder>
+                
+                <!-- Flower 1 - Pink -->
+                <a-entity position="0.15 0.65 0.15">
+                    <a-sphere color="#FF69B4" radius="0.15"></a-sphere>
+                    <a-torus-knot position="0 0 0" radius="0.12" radius-tubular="0.015" segments-tubular="32" color="#FFB6C1"></a-torus-knot>
+                </a-entity>
+                
+                <!-- Flower 2 - Red -->
+                <a-entity position="-0.15 0.85 -0.15">
+                    <a-sphere color="#FF0000" radius="0.15"></a-sphere>
+                    <a-torus-knot position="0 0 0" radius="0.12" radius-tubular="0.015" segments-tubular="32" color="#FF6347"></a-torus-knot>
+                </a-entity>
+                
+                <!-- Flower 3 - Yellow -->
+                <a-entity position="0 1 0">
+                    <a-sphere color="#FFD700" radius="0.18"></a-sphere>
+                    <a-torus-knot position="0 0 0" radius="0.15" radius-tubular="0.018" segments-tubular="32" color="#FFFF00"></a-torus-knot>
+                </a-entity>
+                
+                <!-- Flower 4 - Blue -->
+                <a-entity position="0.2 0.8 -0.1">
+                    <a-sphere color="#1E90FF" radius="0.12"></a-sphere>
+                    <a-torus-knot position="0 0 0" radius="0.09" radius-tubular="0.015" segments-tubular="32" color="#87CEFA"></a-torus-knot>
+                </a-entity>
+                
+                <!-- Flower 5 - Purple -->
+                <a-entity position="-0.2 0.7 0.1">
+                    <a-sphere color="#9400D3" radius="0.14"></a-sphere>
+                    <a-torus-knot position="0 0 0" radius="0.11" radius-tubular="0.015" segments-tubular="32" color="#BA55D3"></a-torus-knot>
+                </a-entity>
+                
+                <!-- Leaves -->
+                <a-entity position="0 0.3 0">
+                    <a-cone position="0.15 0 0" rotation="0 0 -45" radius-bottom="0.15" radius-top="0" height="0.4" color="#006400"></a-cone>
+                    <a-cone position="-0.15 0 0" rotation="0 0 45" radius-bottom="0.15" radius-top="0" height="0.4" color="#006400"></a-cone>
+                </a-entity>
             </a-entity>
             
             <!-- Happy Mother's Day Message -->
@@ -113,7 +147,6 @@
                     value="❤️"
                     position="0.3 0.4 0.3"
                     scale="0.5 0.5 0.5"
-                    rotation="0 0 0"
                     animation="property: position; to: 0.3 0.6 0.3; loop: true; dir: alternate; dur: 2000; easing: easeInOutSine;">
                 </a-text>
                 
@@ -122,7 +155,6 @@
                     value="❤️"
                     position="-0.3 0.3 -0.2"
                     scale="0.5 0.5 0.5"
-                    rotation="0 0 0"
                     animation="property: position; to: -0.3 0.5 -0.2; loop: true; dir: alternate; dur: 1800; easing: easeInOutSine;">
                 </a-text>
                 
@@ -131,7 +163,6 @@
                     value="❤️"
                     position="0.2 0.2 -0.3"
                     scale="0.5 0.5 0.5"
-                    rotation="0 0 0"
                     animation="property: position; to: 0.2 0.4 -0.3; loop: true; dir: alternate; dur: 2200; easing: easeInOutSine;">
                 </a-text>
             </a-entity>
