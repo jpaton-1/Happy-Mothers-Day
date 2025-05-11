@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mother's Day AR Flowers</title>
+    <title>Mother's Day GLB Flowers AR</title>
     
     <!-- Include Three.js for 3D rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
@@ -36,6 +36,28 @@
             text-align: center;
             padding: 20px;
             box-sizing: border-box;
+        }
+        
+        #loading-progress {
+            width: 80%;
+            max-width: 300px;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        #loading-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #FF69B4;
+            transition: width 0.3s ease;
+        }
+        
+        #loading-text {
+            margin-top: 10px;
+            font-size: 14px;
         }
         
         #camera-feed {
@@ -174,8 +196,11 @@
     <!-- Loading screen -->
     <div id="loading">
         <h1>Mother's Day AR Flowers</h1>
-        <p>Loading... Please allow camera access when prompted.</p>
-        <p>Tap the pink button to place flowers in your space!</p>
+        <p>Loading flowers... Please wait</p>
+        <div id="loading-progress">
+            <div id="loading-bar"></div>
+        </div>
+        <div id="loading-text">Loading: 0%</div>
     </div>
     
     <!-- Permission overlay for iOS devices -->
@@ -211,6 +236,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Get elements
             const loading = document.getElementById('loading');
+            const loadingBar = document.getElementById('loading-bar');
+            const loadingText = document.getElementById('loading-text');
             const permissionOverlay = document.getElementById('permission-overlay');
             const permissionBtn = document.getElementById('permission-btn');
             const cameraFeed = document.getElementById('camera-feed');
@@ -226,6 +253,8 @@
             let scene, camera, renderer, controls;
             let flowerModels = [];
             let flowers = [];
+            let modelsLoaded = false;
+            let modelsLoading = false;
             
             // Check for URL parameters
             const urlParams = new URLSearchParams(window.location.search);
@@ -365,16 +394,11 @@
                 // Start animation loop
                 animate();
                 
-                // Preload flower models
-                preloadFlowerModels();
+                // Load flower models (with priority)
+                loadFlowerModels();
                 
                 // Handle window resize
                 window.addEventListener('resize', onWindowResize);
-                
-                // Hide loading screen
-                setTimeout(() => {
-                    loading.style.display = 'none';
-                }, 1000);
                 
                 debugLog('Three.js initialized');
             }
@@ -398,70 +422,135 @@
                 renderer.setSize(window.innerWidth, window.innerHeight);
             }
             
-            // Preload flower models
-            function preloadFlowerModels() {
-                debugLog('Preloading flower models...');
+            // Load flower GLB models
+            function loadFlowerModels() {
+                // Prevent double loading
+                if (modelsLoading) return;
+                modelsLoading = true;
                 
-                // Add fallback flower creation
-                createFallbackFlowerModels();
+                debugLog('Loading GLB flower models...');
                 
                 // Define flower model paths
-                const flowerPaths = [
-                    { path: './models/6 Orchid.glb', scale: 0.5 },
-                    { path: './models/7 Poppy.glb', scale: 0.5 },
-                    { path: './models/8 Iris.glb', scale: 0.5 },
-                    { path: './models/13 Marigold.glb', scale: 0.5 },
-                    { path: './models/16 Lavender.glb', scale: 0.5 }
+                const flowerFiles = [
+                    '6 Orchid.glb',
+                    '7 Poppy.glb',
+                    '8 Iris.glb',
+                    '13 Marigold.glb',
+                    '16 Lavender.glb',
+                    '17 Hibiscus.glb',
+                    '20 Violet.glb',
+                    '24 Cosmos.glb',
+                    '25 Snapdragon.glb',
+                    '26 Morning Glory.glb',
+                    '27 Anemone.glb',
+                    '30 Primrose.glb'
                 ];
                 
-                // Try to load real models
+                // Create an array of flower models to load
+                const flowerPaths = flowerFiles.map(filename => {
+                    return { 
+                        path: `./models/${filename}`, 
+                        scale: 0.5,
+                        name: filename.replace('.glb', '')
+                    };
+                });
+                
+                // Set up loader
                 const loader = new THREE.GLTFLoader();
                 let loadedCount = 0;
                 let successCount = 0;
+                const totalModels = flowerPaths.length;
                 
-                // Check if any models loaded
+                // Check if all models have been processed
                 const checkAllLoaded = () => {
                     loadedCount++;
-                    if (loadedCount >= flowerPaths.length) {
-                        debugLog(`Model loading complete: ${successCount}/${flowerPaths.length} models loaded`);
+                    
+                    // Update progress
+                    const percent = Math.round((loadedCount / totalModels) * 100);
+                    loadingBar.style.width = `${percent}%`;
+                    loadingText.textContent = `Loading: ${percent}% (${successCount} models loaded)`;
+                    
+                    // Once all models have been processed
+                    if (loadedCount >= totalModels) {
+                        debugLog(`Model loading complete: ${successCount}/${totalModels} models loaded`);
+                        
+                        if (successCount > 0) {
+                            modelsLoaded = true;
+                            
+                            // Hide loading screen after a brief delay
+                            setTimeout(() => {
+                                loading.style.display = 'none';
+                            }, 500);
+                        } else {
+                            // No models loaded successfully
+                            debugLog('No GLB models loaded successfully, using fallbacks');
+                            createFallbackFlowerModels();
+                            
+                            // Hide loading screen after creating fallbacks
+                            setTimeout(() => {
+                                loading.style.display = 'none';
+                            }, 500);
+                        }
                     }
                 };
                 
-                // Try to load each model
+                // Load each model with a small delay to avoid overwhelming the browser
                 flowerPaths.forEach((flowerInfo, index) => {
-                    try {
-                        loader.load(
-                            flowerInfo.path,
-                            (gltf) => {
-                                // Success - add to models
-                                flowerModels.push({
-                                    model: gltf.scene,
-                                    scale: flowerInfo.scale,
-                                    type: 'gltf'
-                                });
-                                successCount++;
-                                checkAllLoaded();
-                            },
-                            (xhr) => {
-                                // Progress
-                                const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
-                                debugLog(`Loading model ${index + 1}: ${percentComplete}%`);
-                            },
-                            (error) => {
-                                // Error loading model
-                                console.warn(`Error loading model ${flowerInfo.path}:`, error);
-                                checkAllLoaded();
-                            }
-                        );
-                    } catch (e) {
-                        console.warn(`Error loading model ${flowerInfo.path}:`, e);
-                        checkAllLoaded();
-                    }
+                    // Add a small staggered delay to prevent overwhelming the browser
+                    setTimeout(() => {
+                        try {
+                            loader.load(
+                                flowerInfo.path,
+                                (gltf) => {
+                                    // Success - add to models
+                                    flowerModels.push({
+                                        model: gltf.scene,
+                                        scale: flowerInfo.scale,
+                                        type: 'gltf',
+                                        name: flowerInfo.name
+                                    });
+                                    
+                                    successCount++;
+                                    debugLog(`Successfully loaded: ${flowerInfo.path}`);
+                                    checkAllLoaded();
+                                },
+                                (xhr) => {
+                                    // Progress
+                                    if (xhr.lengthComputable) {
+                                        const modelPercent = Math.round((xhr.loaded / xhr.total) * 100);
+                                        debugLog(`Loading model ${index + 1}: ${modelPercent}%`);
+                                    }
+                                },
+                                (error) => {
+                                    // Error loading model
+                                    console.warn(`Error loading model ${flowerInfo.path}:`, error);
+                                    debugLog(`Failed to load: ${flowerInfo.path}`);
+                                    checkAllLoaded();
+                                }
+                            );
+                        } catch (e) {
+                            console.warn(`Error loading model ${flowerInfo.path}:`, e);
+                            debugLog(`Exception loading: ${flowerInfo.path}`);
+                            checkAllLoaded();
+                        }
+                    }, index * 100); // Stagger loading by 100ms per model
                 });
+                
+                // If no models load after a timeout, create fallbacks
+                setTimeout(() => {
+                    if (successCount === 0 && !modelsLoaded) {
+                        debugLog('Loading timeout - creating fallback models');
+                        createFallbackFlowerModels();
+                        loading.style.display = 'none';
+                    }
+                }, 15000); // 15 second timeout
             }
             
             // Create fallback flower models
             function createFallbackFlowerModels() {
+                // Only create fallbacks if we don't have GLB models
+                if (flowerModels.length > 0) return;
+                
                 debugLog('Creating fallback flower models...');
                 
                 // Flower colors
@@ -513,10 +602,12 @@
                     flowerModels.push({
                         model: flowerGroup,
                         scale: 1,
-                        type: 'fallback'
+                        type: 'fallback',
+                        name: `Fallback Flower ${i+1}`
                     });
                 }
                 
+                modelsLoaded = true;
                 debugLog(`${flowerModels.length} fallback models created`);
             }
             
@@ -566,12 +657,6 @@
             function placeFlowers() {
                 debugLog(`Placing flowers with ${flowerModels.length} models available`);
                 
-                // If no flower models are available, create fallbacks
-                if (flowerModels.length === 0) {
-                    debugLog('No flower models available, creating fallbacks now');
-                    createFallbackFlowerModels();
-                }
-                
                 // Create bouquet container
                 const bouquetContainer = new THREE.Group();
                 
@@ -602,6 +687,9 @@
                 const flowerCount = Math.min(7, flowerModels.length);
                 const radius = 0.3;
                 
+                // Add used indices tracker to ensure variety
+                const usedIndices = new Set();
+                
                 for (let i = 0; i < flowerCount; i++) {
                     // Calculate position in a circle
                     const angle = (i / flowerCount) * Math.PI * 2;
@@ -609,20 +697,31 @@
                     const x = Math.cos(angle) * randomRadius;
                     const z = Math.sin(angle) * randomRadius;
                     
-                    // Select flower model
-                    const flowerIndex = i % flowerModels.length;
+                    // Select a random flower model that hasn't been used yet
+                    let flowerIndex;
+                    let attempts = 0;
+                    
+                    do {
+                        flowerIndex = Math.floor(Math.random() * flowerModels.length);
+                        attempts++;
+                        // Break out if we've tried too many times or have used all models
+                        if (attempts > 10 || usedIndices.size >= flowerModels.length) {
+                            break;
+                        }
+                    } while (usedIndices.has(flowerIndex) && usedIndices.size < flowerModels.length);
+                    
+                    usedIndices.add(flowerIndex);
+                    
                     const flowerInfo = flowerModels[flowerIndex];
                     
                     // Clone the model
                     let flowerModel;
                     try {
-                        if (flowerInfo.type === 'gltf') {
-                            flowerModel = flowerInfo.model.clone();
-                        } else {
-                            flowerModel = flowerInfo.model.clone();
-                        }
+                        flowerModel = flowerInfo.model.clone();
+                        debugLog(`Added ${flowerInfo.name} to bouquet`);
                     } catch (e) {
                         console.error("Error cloning model:", e);
+                        debugLog(`Error adding ${flowerInfo.name}`);
                         continue;
                     }
                     
@@ -642,24 +741,29 @@
                 
                 // Add center flower (slightly larger)
                 if (flowerModels.length > 0) {
-                    const centerFlowerInfo = flowerModels[Math.floor(Math.random() * flowerModels.length)];
-                    let centerFlower;
+                    // Pick one we haven't used yet if possible
+                    let centerIndex = 0;
+                    for (let i = 0; i < flowerModels.length; i++) {
+                        if (!usedIndices.has(i)) {
+                            centerIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    const centerFlowerInfo = flowerModels[centerIndex];
                     
                     try {
-                        if (centerFlowerInfo.type === 'gltf') {
-                            centerFlower = centerFlowerInfo.model.clone();
-                        } else {
-                            centerFlower = centerFlowerInfo.model.clone();
-                        }
-                        
+                        const centerFlower = centerFlowerInfo.model.clone();
                         centerFlower.position.set(0, 0.1, 0);
                         
                         const scale = 0.7 * centerFlowerInfo.scale;
                         centerFlower.scale.set(scale, scale, scale);
                         
                         bouquetContainer.add(centerFlower);
+                        debugLog(`Added ${centerFlowerInfo.name} as center flower`);
                     } catch (e) {
                         console.error("Error adding center flower:", e);
+                        debugLog(`Error adding center flower`);
                     }
                 }
                 
